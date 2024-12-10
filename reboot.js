@@ -63,7 +63,7 @@ function getNonce(hostname) {
 	});
 };
 
-function postSalt(hostname, username, nonceResponse) {
+function salt(hostname, username, nonceResponse) {
 	return new Promise( (resolve, reject) => {
 		const nonceUrl = base64url_escape(nonceResponse.nonce);
 		const userHash = sha256url(username, nonceResponse.nonce);
@@ -157,8 +157,6 @@ function reboot(hostname, loginResponse) {
 				Cookie: `sid=${loginResponse.sid}`,
 			},
 		};
-		console.log(options);
-		console.log(postBody);
 		var req = http.request(options, result => {
 			let rawData = '';
 
@@ -191,7 +189,7 @@ var saltResponse = '';
 var loginResponse = '';
 
 getNonce(hostname)
-	.then(response => { nonceResponse = response; return postSalt(hostname, username, nonceResponse); } )
+	.then(response => { nonceResponse = response; return salt(hostname, username, nonceResponse); } )
 	.then(response => { saltResponse = response; return login(hostname, username, password, nonceResponse, saltResponse); } )
 	.then(response => { loginResponse = response; return reboot(hostname, loginResponse); } )
 	.then(response => console.log(response));
