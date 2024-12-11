@@ -30,9 +30,21 @@ var base64url_escape = function (b64) {
     return out;
 };
 
-function F(R) {
-	            return "function" == typeof R.constructor ? R.constructor.name : null
-	        }
+function getResult(options, result, resolve, reject) {
+        let rawData = '';
+
+        result.on('data', chunk => {
+		rawData += chunk;
+        });
+
+        result.on('end', () => {
+		resolve(rawData);
+        });
+
+        result.on('error', () => {
+		reject(error);
+	});
+}
 
 function getNonce(hostname) {
 	return new Promise( (resolve, reject) => {
@@ -41,24 +53,7 @@ function getNonce(hostname) {
 			path: '/login_web_app.cgi?nonce',
 			method: 'GET',
 		};
-
-		var req = http.request(options, result => {
-
-		        let rawData = '';
-
-		        result.on('data', chunk => {
-                		rawData += chunk;
-		        });
-
-		        result.on('end', () => {
-                		parsedData = JSON.parse(rawData);
-				resolve(parsedData);
-		        });
-
-			result.on('error', () => {
-				reject(error);
-			});
-		});
+		var req = http.request(options, result => getResult(options, result, resolve, reject));
 		req.end();
 	});
 };
@@ -77,22 +72,7 @@ function salt(hostname, username, nonceResponse) {
 				'Content-Length': postBody.length,
 			},
 		};
-		var req = http.request(options, result => {
-			let rawData = '';
-
-			result.on('data', chunk => {
-				rawData += chunk;
-			});
-
-			result.on('end', () => {
-				parsedData = JSON.parse(rawData);
-				resolve(parsedData);
-			});
-
-			result.on('error', () => {
-				reject(error);
-			});
-		});
+		var req = http.request(options, result => getResult(options, result, resolve, reject));
 		req.write(postBody);
 		req.end();
 	});
@@ -123,22 +103,7 @@ function login(hostname, username, password, nonceResponse, saltResponse) {
 				'Content-Length': postBody.length,
 			},
 		};
-		var req = http.request(options, result => {
-		        let rawData = '';
-
-	                result.on('data', chunk => {
-				rawData += chunk;
-			});
-
-                        result.on('end', () => {
-				parsedData = JSON.parse(rawData);
-				resolve(parsedData);
-			});
-
-			result.on('error', () => {
-			        reject(error);
-			});
-		});
+		var req = http.request(options, result => getResult(options, result, resolve, reject));
 		req.write(postBody);
 		req.end();
 	});
@@ -157,21 +122,7 @@ function reboot(hostname, loginResponse) {
 				Cookie: `sid=${loginResponse.sid}`,
 			},
 		};
-		var req = http.request(options, result => {
-			let rawData = '';
-
-			result.on('data', chunk => {
-				rawData += chunk;
-			});
-
-			result.on('end', () => {
-				resolve(rawData);
-			});
-
-			result.on('error', () => {
-				reject(error);
-			});
-		});
+		var req = http.request(options, result => getResult(options, result, resolve, reject));
 		req.write(postBody);
 		req.end();
 	});
@@ -189,8 +140,8 @@ var saltResponse = '';
 var loginResponse = '';
 
 getNonce(hostname)
-	.then(response => { nonceResponse = response; return salt(hostname, username, nonceResponse); } )
-	.then(response => { saltResponse = response; return login(hostname, username, password, nonceResponse, saltResponse); } )
-	.then(response => { loginResponse = response; return reboot(hostname, loginResponse); } )
+	.then(response => { nonceResponse = JSON.parse(response); return salt(hostname, username, nonceResponse); } )
+	.then(response => { saltResponse = JSON.parse(response); return login(hostname, username, password, nonceResponse, saltResponse); } )
+	.then(response => { loginResponse = JSON.parse(response); return reboot(hostname, loginResponse); } )
 	.then(response => console.log(response));
 
